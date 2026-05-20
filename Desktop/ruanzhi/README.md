@@ -88,7 +88,7 @@ python main.py
 > 每人独立运行自己的脚本，结果文件互不覆盖。
 > 成员5需要等成员1~4全部跑完后再执行汇总。
 
-### 成员1 — TextFooler 攻击（黑盒）
+### 成员1 — TextFooler 复现（黑盒攻击）
 
 **文件**：`attack/baseline_attack.py`
 
@@ -98,11 +98,21 @@ python attack/baseline_attack.py --attack textfooler
 
 **产出**：`results/baseline/textfooler_results.csv`
 
-**对应论文**：*Is BERT Really Robust?* Jin et al., AAAI 2020
+**需要记录并与论文对比的指标**（对应论文 Table，BERT victim on IMDB）：
+
+| 指标 | 论文报告值 | 你的复现值（填入） |
+|------|-----------|-----------------|
+| ASR（攻击成功率） | ~87% | |
+| Avg Words Changed | ~6 词 | |
+| Avg Queries | — | |
+
+> 复现值与论文值存在差异是正常的（论文用的 BERT 版本、样本数可能不同），需在报告中说明原因。
+
+**对应论文**：*Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment* Jin et al., AAAI 2020
 
 ---
 
-### 成员2 — BERT-Attack 攻击（黑盒）
+### 成员2 — BERT-Attack 复现（黑盒攻击）
 
 **文件**：`attack/baseline_attack.py`
 
@@ -112,11 +122,19 @@ python attack/baseline_attack.py --attack bertattack
 
 **产出**：`results/baseline/bertattack_results.csv`
 
+**需要记录并与论文对比的指标**（对应论文 Table 2，BERT on IMDB）：
+
+| 指标 | 论文报告值 | 你的复现值（填入） |
+|------|-----------|-----------------|
+| ASR（攻击成功率） | ~90%+ | |
+| Avg Words Changed | — | |
+| Avg Queries | — | |
+
 **对应论文**：*BERT-ATTACK: Adversarial Attack Against BERT Using BERT* Li et al., EMNLP 2020
 
 ---
 
-### 成员3 — HotFlip 攻击（白盒）
+### 成员3 — HotFlip 复现（白盒攻击）
 
 **文件**：`attack/baseline_attack.py`
 
@@ -124,9 +142,19 @@ python attack/baseline_attack.py --attack bertattack
 python attack/baseline_attack.py --attack hotflip
 ```
 
-> HotFlip 需要访问模型梯度（白盒），CPU 上极慢，建议用 GPU。
+> HotFlip 是白盒攻击（需要模型梯度），CPU 上极慢，建议用 GPU。
 
 **产出**：`results/baseline/hotflip_results.csv`
+
+**需要记录并与论文对比的指标**：
+
+| 指标 | 论文报告值 | 你的复现值（填入） |
+|------|-----------|-----------------|
+| ASR（攻击成功率） | 接近100%（白盒梯度优势） | |
+| Avg Words Changed | 较多（白盒不受扰动约束） | |
+| Avg Queries | 极少（梯度直接指引） | |
+
+> HotFlip 原论文主要针对字符级扰动，TextAttack 实现的是词级版本，因此与原论文指标对比意义有限，重点是与黑盒方法横向比较（ASR 更高、查询更少，代价是需要白盒访问）。
 
 **对应论文**：*HotFlip: White-Box Adversarial Examples for Text Classification* Ebrahimi et al., ACL 2018
 
@@ -146,7 +174,7 @@ python attack/improved_attack.py
 
 ---
 
-### 成员5 — 改进B：对抗训练防御 & 汇总评估
+### 成员5 — 鲁棒性分析：对抗训练防御 & 汇总评估
 
 **文件**：`defense/adversarial_training.py`、`evaluate/evaluate.py`、`evaluate/visualize.py`
 
@@ -222,7 +250,9 @@ importance(w_i) = [conf(x) - conf(x_删除w_i)] × (1 + attention_weight(w_i))
 
 ---
 
-## 五、改进B详解：对抗训练防御
+## 五、鲁棒性分析：对抗训练防御
+
+> **注意**：对抗训练是一种**防御方法**，不是对现有攻击工具的算法改进。改进A（AWIR）修改了攻击的核心评分公式，属于方法层面的改进；对抗训练是从模型训练侧提升鲁棒性，对应题目"鲁棒性分析"部分。两者研究方向不同，互为补充。
 
 ### 核心思想
 
