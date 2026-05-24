@@ -1,5 +1,5 @@
 """
-成员4负责: Unified evaluation — compute and print the final comparison table.
+成员3负责: Unified evaluation — compute and print the final comparison table.
 
 This script reads results from all three attack experiments and produces
 a single table for the report. Run after all attacks are done.
@@ -8,9 +8,10 @@ Run:
     python evaluate/evaluate.py
 
 Inputs (must exist first):
-    ./results/baseline/textfooler_results.csv
-    ./results/baseline/bertattack_results.csv
-    ./results/improved/improved_results.json
+    ./results/baseline/textfooler_results.csv   (成员1产出)
+    ./results/baseline/bertattack_results.csv   (成员2产出)
+    ./results/improved/improved_results.json    (成员4产出)
+    ./results/defense/baseline/textfooler_results.csv  (成员5产出, optional)
 
 Output:
     ./results/final_comparison.csv  -- the table for your report
@@ -101,7 +102,6 @@ def main():
     for name, fname in [
         ("TextFooler (Jin 2020)", "baseline/textfooler_results.csv"),
         ("BERT-Attack (Li 2020)", "baseline/bertattack_results.csv"),
-        ("HotFlip (Ebrahimi 2017)", "baseline/hotflip_results.csv"),
     ]:
         r = parse_textattack_csv(os.path.join(RESULTS_DIR, fname), name)
         if r:
@@ -123,19 +123,26 @@ def main():
     print(f"\nTable saved to {output_path}")
 
     # Also compute defense comparison if robust model results exist
-    robust_path = os.path.join(RESULTS_DIR, "defense", "textfooler_robust_results.csv")
-    if os.path.exists(robust_path):
+    defense_rows = []
+    for attack_name, fname in [
+        ("TextFooler", "textfooler_results.csv"),
+        ("BERT-Attack", "bertattack_results.csv"),
+    ]:
+        clean_path = os.path.join(RESULTS_DIR, "baseline", fname)
+        robust_path = os.path.join(RESULTS_DIR, "defense", "baseline", fname)
+        clean_r = parse_textattack_csv(clean_path, f"Clean BERT + {attack_name}")
+        robust_r = parse_textattack_csv(robust_path, f"Robust BERT + {attack_name}")
+        if clean_r:
+            defense_rows.append(clean_r)
+        if robust_r:
+            defense_rows.append(robust_r)
+
+    if defense_rows:
         print("\n" + "="*65)
         print("DEFENSE COMPARISON (Clean Model vs Robust Model)")
         print("="*65)
-        clean_r = parse_textattack_csv(
-            os.path.join(RESULTS_DIR, "baseline", "textfooler_results.csv"),
-            "Clean BERT + TextFooler"
-        )
-        robust_r = parse_textattack_csv(robust_path, "Robust BERT + TextFooler")
-        if clean_r and robust_r:
-            defense_df = pd.DataFrame([clean_r, robust_r])
-            print(defense_df[["Method", "ASR (%)", "Avg Queries"]].to_string(index=False))
+        defense_df = pd.DataFrame(defense_rows)
+        print(defense_df[["Method", "ASR (%)", "Avg Queries"]].to_string(index=False))
 
 
 if __name__ == "__main__":

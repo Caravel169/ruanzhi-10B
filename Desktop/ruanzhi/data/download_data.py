@@ -13,7 +13,8 @@ def main():
     print("  Done.")
 
     print("\nDownloading NLTK resources required by TextAttack...")
-    for pkg in ["punkt", "averaged_perceptron_tagger", "omw-1.4", "wordnet"]:
+    for pkg in ["punkt", "punkt_tab", "averaged_perceptron_tagger",
+                "averaged_perceptron_tagger_eng", "omw-1.4", "wordnet"]:
         nltk.download(pkg, quiet=True)
     print("  Done.")
 

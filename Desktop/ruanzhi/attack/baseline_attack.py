@@ -64,19 +64,24 @@ def summarize_results(csv_path, method_name):
 
 
 def main(args):
+    import torch
     out_dir = os.path.join(args.results_dir, "baseline")
     os.makedirs(out_dir, exist_ok=True)
 
     print(f"Loading model from {args.model_dir}")
     tokenizer = BertTokenizer.from_pretrained(args.model_dir)
     model = BertForSequenceClassification.from_pretrained(args.model_dir)
+    if torch.cuda.is_available():
+        model = model.cuda()
+        print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+    else:
+        print("GPU not available, using CPU.")
     model_wrapper = HuggingFaceModelWrapper(model, tokenizer)
 
     print(f"Loading dataset: {args.dataset} (test split, {args.num_examples} examples)")
     dataset = HuggingFaceDataset(args.dataset, "plain_text", split="test")
 
     summaries = []
-
     run = args.attack  # "textfooler" | "bertattack" | "all"
 
     # --- TextFooler (Jin et al., AAAI 2020) ---

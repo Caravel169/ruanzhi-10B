@@ -16,7 +16,6 @@ yield a higher attack success rate with fewer model queries.
 
 This script also runs standard WIR as a control, so you get a direct A/B comparison.
 
-Depends on: train/finetune_bert.py must finish first.
 Run:
     python attack/improved_attack.py
 

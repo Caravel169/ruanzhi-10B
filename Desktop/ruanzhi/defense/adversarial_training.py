@@ -61,7 +61,7 @@ def generate_adversarial_examples(model_dir, dataset_name, num_adv_examples):
     model_wrapper = HuggingFaceModelWrapper(model, tokenizer)
 
     # Use train split for adversarial training (not test — that's for evaluation)
-    dataset = HuggingFaceDataset(dataset_name, split="train")
+    dataset = HuggingFaceDataset(dataset_name, "plain_text", split="train")
 
     attack = TextFoolerJin2019.build(model_wrapper)
     tmp_csv = os.path.join(RESULTS_DIR, "defense", "adv_train_examples.csv")

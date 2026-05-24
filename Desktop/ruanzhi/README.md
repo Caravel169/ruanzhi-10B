@@ -11,7 +11,7 @@ ruanzhi-10B/
 ├── data/download_data.py                # 预下载数据集与 NLTK 资源
 ├── train/finetune_bert.py               # BERT 微调流程（参考用，攻击不依赖此步）
 ├── attack/
-│   ├── baseline_attack.py               # TextFooler / BERT-Attack / HotFlip（可单独运行）
+│   ├── baseline_attack.py               # TextFooler / BERT-Attack（可单独运行）
 │   └── improved_attack.py               # 改进A：AWIR 注意力加权攻击
 ├── defense/adversarial_training.py      # 改进B：对抗训练防御
 ├── evaluate/
@@ -86,7 +86,7 @@ python main.py
 ## 三、五人分工
 
 > 每人独立运行自己的脚本，结果文件互不覆盖。
-> 成员5需要等成员1~4全部跑完后再执行汇总。
+> 成员3需要等成员1、2、4跑完后再执行汇总；成员5需要等成员1、2跑完后再执行对抗训练。
 
 ### 成员1 — TextFooler 复现（黑盒攻击）
 
@@ -134,29 +134,31 @@ python attack/baseline_attack.py --attack bertattack
 
 ---
 
-### 成员3 — HotFlip 复现（白盒攻击）
+### 成员3 — 汇总评估与可视化
 
-**文件**：`attack/baseline_attack.py`
+**文件**：`evaluate/evaluate.py`、`evaluate/visualize.py`
+
+**步骤（等成员1、2、4跑完后执行）**：
 
 ```bash
-python attack/baseline_attack.py --attack hotflip
+# 第1步：汇总所有攻击实验结果
+python evaluate/evaluate.py
+# 产出：results/final_comparison.csv
+
+# 第2步：生成可视化图表
+python evaluate/visualize.py
+# 产出：results/figures/*.png
 ```
 
-> HotFlip 是白盒攻击（需要模型梯度），CPU 上极慢，建议用 GPU。
+**产出说明**：
 
-**产出**：`results/baseline/hotflip_results.csv`
+| 文件 | 内容 |
+|------|------|
+| `results/final_comparison.csv` | 所有方法指标汇总对比表（ASR、查询次数、扰动率） |
+| `results/figures/asr_comparison.png` | 各方法 ASR 柱状图 |
+| `results/figures/queries_comparison.png` | 各方法平均查询次数对比图 |
 
-**需要记录并与论文对比的指标**：
-
-| 指标 | 论文报告值 | 你的复现值（填入） |
-|------|-----------|-----------------|
-| ASR（攻击成功率） | 接近100%（白盒梯度优势） | |
-| Avg Words Changed | 较多（白盒不受扰动约束） | |
-| Avg Queries | 极少（梯度直接指引） | |
-
-> HotFlip 原论文主要针对字符级扰动，TextAttack 实现的是词级版本，因此与原论文指标对比意义有限，重点是与黑盒方法横向比较（ASR 更高、查询更少，代价是需要白盒访问）。
-
-**对应论文**：*HotFlip: White-Box Adversarial Examples for Text Classification* Ebrahimi et al., ACL 2018
+> 等成员5跑完防御实验后，再次运行 `evaluate.py` 可自动追加防御对比结果。
 
 ---
 
@@ -174,14 +176,14 @@ python attack/improved_attack.py
 
 ---
 
-### 成员5 — 鲁棒性分析：对抗训练防御 & 汇总评估
+### 成员5 — 鲁棒性分析：对抗训练防御
 
-**文件**：`defense/adversarial_training.py`、`evaluate/evaluate.py`、`evaluate/visualize.py`
+**文件**：`defense/adversarial_training.py`
 
-**步骤（等成员1~4跑完后执行）**：
+**步骤（等成员1、2跑完后执行）**：
 
 ```bash
-# 第1步：对抗训练
+# 第1步：对抗训练，生成鲁棒模型
 python defense/adversarial_training.py
 # 产出：checkpoints/bert-imdb-adv/
 
@@ -190,16 +192,24 @@ python attack/baseline_attack.py \
     --attack textfooler \
     --model_dir checkpoints/bert-imdb-adv \
     --results_dir results/defense
-# 产出：results/defense/textfooler_results.csv
+# 产出：results/defense/baseline/textfooler_results.csv
 
-# 第3步：汇总所有实验结果
-python evaluate/evaluate.py
-# 产出：results/final_comparison.csv
-
-# 第4步：生成图表
-python evaluate/visualize.py
-# 产出：results/figures/*.png
+# 第3步：用 BERT-Attack 也攻击鲁棒模型，做完整对比
+python attack/baseline_attack.py \
+    --attack bertattack \
+    --model_dir checkpoints/bert-imdb-adv \
+    --results_dir results/defense
+# 产出：results/defense/baseline/bertattack_results.csv
 ```
+
+**需要记录的指标**（与原始模型对比，体现防御效果）：
+
+| 攻击方法 | 原始模型 ASR | 鲁棒模型 ASR（填入） | 下降幅度 |
+|----------|------------|-------------------|---------|
+| TextFooler | （成员1的复现值） | | |
+| BERT-Attack | （成员2的复现值） | | |
+
+> 鲁棒准确率 = 1 − ASR。预期：对抗训练后 ASR 下降 20~40 个百分点，代价是干净准确率略降 3~5%。
 
 详见下方"改进B详解"。
 

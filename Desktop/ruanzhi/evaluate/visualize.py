@@ -1,5 +1,5 @@
 """
-成员4负责: Generate charts for the report from final_comparison.csv.
+成员3负责: Generate charts for the report from final_comparison.csv.
 
 Run after evaluate.py:
     python evaluate/visualize.py
