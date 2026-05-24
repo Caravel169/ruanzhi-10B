@@ -42,6 +42,33 @@ def run_single_attack(recipe_class, model_wrapper, dataset, num_examples, output
     return results
 
 
+def compute_semantic_similarity(csv_path):
+    """Compute average cosine similarity between original and perturbed texts
+    for successful attacks using sentence-transformers (all-MiniLM-L6-v2).
+    Original papers use USE; values may differ slightly."""
+    try:
+        import pandas as pd
+        from sentence_transformers import SentenceTransformer, util
+        df = pd.read_csv(csv_path)
+        successful = df[df["result_type"] == "Successful"]
+        if len(successful) == 0:
+            return float("nan")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        orig_embs = model.encode(
+            successful["original_text"].tolist(),
+            convert_to_tensor=True, show_progress_bar=False
+        )
+        pert_embs = model.encode(
+            successful["perturbed_text"].tolist(),
+            convert_to_tensor=True, show_progress_bar=False
+        )
+        sims = util.cos_sim(orig_embs, pert_embs).diagonal()
+        return round(float(sims.mean()), 4)
+    except ImportError:
+        print("[WARNING] sentence-transformers not installed. Run: pip install sentence-transformers")
+        return float("nan")
+
+
 def summarize_results(csv_path, method_name):
     import pandas as pd
     df = pd.read_csv(csv_path)
@@ -54,13 +81,17 @@ def summarize_results(csv_path, method_name):
     else:
         avg_words_changed = float("nan")
 
+    print(f"  Computing semantic similarity (sentence-transformers)...")
+    sem_sim = compute_semantic_similarity(csv_path)
+
     print(f"\n[{method_name}]")
     print(f"  Total examples:       {total}")
     print(f"  Successful attacks:   {success}")
     print(f"  Attack Success Rate:  {asr:.1f}%")
     print(f"  Avg words changed:    {avg_words_changed:.1f}")
+    print(f"  Semantic Similarity:  {sem_sim:.4f}")
     return {"method": method_name, "total": total, "success": success,
-            "asr": asr, "avg_words_changed": avg_words_changed}
+            "asr": asr, "avg_words_changed": avg_words_changed, "sem_sim": sem_sim}
 
 
 def main(args):
@@ -106,10 +137,10 @@ def main(args):
     print("\n" + "="*50)
     print("BASELINE SUMMARY (compare with paper tables)")
     print("="*50)
-    print(f"{'Method':<15} {'ASR':>8} {'Avg Words Changed':>20}")
-    print("-"*45)
+    print(f"{'Method':<15} {'ASR':>8} {'Avg Words Changed':>20} {'Sem. Similarity':>17}")
+    print("-"*63)
     for s in summaries:
-        print(f"{s['method']:<15} {s['asr']:>7.1f}% {s['avg_words_changed']:>20.1f}")
+        print(f"{s['method']:<15} {s['asr']:>7.1f}% {s['avg_words_changed']:>20.1f} {s['sem_sim']:>17.4f}")
 
     summary_path = os.path.join(out_dir, "baseline_summary.txt")
     with open(summary_path, "w") as f:

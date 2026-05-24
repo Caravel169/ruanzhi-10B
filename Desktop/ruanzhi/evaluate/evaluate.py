@@ -22,6 +22,30 @@ import sys
 
 import pandas as pd
 
+
+def _compute_sem_sim(csv_path):
+    """Compute average cosine similarity between original and perturbed texts
+    for successful attacks (sentence-transformers, all-MiniLM-L6-v2)."""
+    try:
+        from sentence_transformers import SentenceTransformer, util
+        df = pd.read_csv(csv_path)
+        successful = df[df["result_type"] == "Successful"]
+        if len(successful) == 0:
+            return float("nan")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        orig_embs = model.encode(
+            successful["original_text"].tolist(),
+            convert_to_tensor=True, show_progress_bar=False
+        )
+        pert_embs = model.encode(
+            successful["perturbed_text"].tolist(),
+            convert_to_tensor=True, show_progress_bar=False
+        )
+        sims = util.cos_sim(orig_embs, pert_embs).diagonal()
+        return round(float(sims.mean()), 4)
+    except ImportError:
+        return float("nan")
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from configs.config import RESULTS_DIR
 
@@ -51,6 +75,8 @@ def parse_textattack_csv(csv_path, method_name):
         else float("nan")
     )
 
+    sem_sim = _compute_sem_sim(csv_path)
+
     return {
         "Method": method_name,
         "Total": total,
@@ -60,6 +86,7 @@ def parse_textattack_csv(csv_path, method_name):
         "ASR (%)": round(asr, 1),
         "Avg Words Changed": round(avg_words_changed, 2),
         "Avg Queries": round(avg_queries, 1),
+        "Sem. Similarity": sem_sim,
     }
 
 

@@ -105,6 +105,9 @@ python attack/baseline_attack.py --attack textfooler
 | ASR（攻击成功率） | ~87% | |
 | Avg Words Changed | ~6 词 | |
 | Avg Queries | — | |
+| Semantic Similarity | — | |
+
+> Semantic Similarity 用 sentence-transformers（all-MiniLM-L6-v2）计算成功样本的余弦相似度均值。原论文使用 USE，模型不同数值会有轻微差异，需在报告中说明。
 
 > 复现值与论文值存在差异是正常的（论文用的 BERT 版本、样本数可能不同），需在报告中说明原因。
 
@@ -129,6 +132,9 @@ python attack/baseline_attack.py --attack bertattack
 | ASR（攻击成功率） | ~90%+ | |
 | Avg Words Changed | — | |
 | Avg Queries | — | |
+| Semantic Similarity | — | |
+
+> Semantic Similarity 用 sentence-transformers（all-MiniLM-L6-v2）计算成功样本的余弦相似度均值。
 
 **对应论文**：*BERT-ATTACK: Adversarial Attack Against BERT Using BERT* Li et al., EMNLP 2020
 
@@ -294,6 +300,7 @@ importance(w_i) = [conf(x) - conf(x_删除w_i)] × (1 + attention_weight(w_i))
 | ASR（攻击成功率） | 成功让模型分类出错的比例 | 模型越脆弱 / 攻击越强 |
 | Avg Queries | 平均每次攻击调用模型的次数 | 查询越少 = 攻击越高效 |
 | Perturbation Rate | 平均修改词的比例 | 修改越少 = 攻击越隐蔽 |
+| Semantic Similarity | 成功攻击样本中原文与对抗文本的余弦相似度均值（sentence-transformers） | 越高 = 对抗文本与原文越接近、攻击越隐蔽 |
 | Robust Accuracy | 被攻击后仍能正确分类的比例 | 模型越鲁棒 |
 
 ---
