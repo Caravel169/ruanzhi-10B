@@ -8,13 +8,16 @@ Run:
     python evaluate/evaluate.py
 
 Inputs (must exist first):
-    ./results/baseline/textfooler_results.csv   (成员1产出)
-    ./results/baseline/bertattack_results.csv   (成员2产出)
-    ./results/improved/improved_results.json    (成员4产出)
-    ./results/defense/baseline/textfooler_results.csv  (成员5产出, optional)
+    ./results/baseline/textfooler_results.csv        (成员1产出)
+    ./results/baseline/bertattack_results.csv         (成员2产出)
+    ./results/improved/improved_results.json          (成员4产出)
+    ./results/defense/baseline/textfooler_results.csv (成员5产出, optional)
+    ./results/defense/baseline/bertattack_results.csv (成员5产出, optional)
+    ./results/defense/improved/improved_results.json  (成员5产出, optional)
 
 Output:
-    ./results/final_comparison.csv  -- the table for your report
+    ./results/final_comparison.csv   -- main comparison table for your report
+    ./results/defense_comparison.csv -- defense table (generated when member 5 results exist)
 """
 import json
 import os
@@ -87,6 +90,28 @@ def parse_textattack_csv(csv_path, method_name):
         "Avg Words Changed": round(avg_words_changed, 2),
         "Avg Queries": round(avg_queries, 1),
         "Sem. Similarity": sem_sim,
+    }
+
+
+def _awir_defense_row(json_path, model_label):
+    """Return a single defense row dict for the AWIR_improved entry in a json result file."""
+    if not os.path.exists(json_path):
+        return None
+    with open(json_path) as f:
+        data = json.load(f)
+    r = data.get("AWIR_improved")
+    if r is None:
+        return None
+    return {
+        "Method": f"{model_label} + AWIR",
+        "Total": r["total"],
+        "Successful": r["success"],
+        "Failed": r["total"] - r["success"],
+        "Skipped": 0,
+        "ASR (%)": round(r["asr"], 1),
+        "Avg Words Changed": round(r.get("avg_perturb_rate", float("nan")), 3),
+        "Avg Queries": round(r["avg_queries"], 1),
+        "Sem. Similarity": float("nan"),
     }
 
 
@@ -165,12 +190,29 @@ def main():
         if robust_r:
             defense_rows.append(robust_r)
 
+    # AWIR defense rows (成员5产出: results/defense/improved/improved_results.json)
+    clean_awir = _awir_defense_row(
+        os.path.join(RESULTS_DIR, "improved", "improved_results.json"),
+        "Clean BERT"
+    )
+    robust_awir = _awir_defense_row(
+        os.path.join(RESULTS_DIR, "defense", "improved", "improved_results.json"),
+        "Robust BERT"
+    )
+    if clean_awir:
+        defense_rows.append(clean_awir)
+    if robust_awir:
+        defense_rows.append(robust_awir)
+
     if defense_rows:
         print("\n" + "="*65)
         print("DEFENSE COMPARISON (Clean Model vs Robust Model)")
         print("="*65)
         defense_df = pd.DataFrame(defense_rows)
         print(defense_df[["Method", "ASR (%)", "Avg Queries"]].to_string(index=False))
+        defense_path = os.path.join(RESULTS_DIR, "defense_comparison.csv")
+        defense_df.to_csv(defense_path, index=False)
+        print(f"\nDefense table saved to {defense_path}")
 
 
 if __name__ == "__main__":

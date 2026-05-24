@@ -13,6 +13,7 @@ import os
 import sys
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -93,6 +94,56 @@ def plot_wir_vs_awir(df, out_dir):
     print(f"Saved: {out}")
 
 
+def plot_defense(out_dir):
+    """Grouped bar chart: Clean BERT vs Robust BERT ASR for each attack method."""
+    path = os.path.join(RESULTS_DIR, "defense_comparison.csv")
+    if not os.path.exists(path):
+        print("[SKIP] defense_comparison.csv not found. Run evaluate.py after member 5 finishes.")
+        return
+
+    df = pd.read_csv(path)
+    records = []
+    for _, row in df.iterrows():
+        m = row["Method"]
+        if m.startswith("Clean BERT + "):
+            records.append({"Attack": m[len("Clean BERT + "):], "Model": "Clean BERT", "ASR (%)": row["ASR (%)"]})
+        elif m.startswith("Robust BERT + "):
+            records.append({"Attack": m[len("Robust BERT + "):], "Model": "Robust BERT", "ASR (%)": row["ASR (%)"]})
+
+    if not records:
+        print("[SKIP] No defense data to plot.")
+        return
+
+    plot_df = pd.DataFrame(records)
+    attacks = plot_df["Attack"].unique()
+    x = np.arange(len(attacks))
+    width = 0.35
+
+    def _get(attack, model):
+        sel = plot_df[(plot_df["Attack"] == attack) & (plot_df["Model"] == model)]["ASR (%)"]
+        return float(sel.values[0]) if len(sel) > 0 else 0.0
+
+    clean_vals = [_get(a, "Clean BERT") for a in attacks]
+    robust_vals = [_get(a, "Robust BERT") for a in attacks]
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    bars1 = ax.bar(x - width / 2, clean_vals, width, label="Clean BERT", color=PALETTE[0], edgecolor="white")
+    bars2 = ax.bar(x + width / 2, robust_vals, width, label="Robust BERT (adv. trained)", color=PALETTE[1], edgecolor="white")
+    ax.bar_label(bars1, fmt="%.1f%%", padding=3, fontsize=9)
+    ax.bar_label(bars2, fmt="%.1f%%", padding=3, fontsize=9)
+    ax.set_ylabel("Attack Success Rate (%)")
+    ax.set_title("Defense Effect: Adversarial Training vs Each Attack\n(lower robust bar = better defense)")
+    ax.set_xticks(x)
+    ax.set_xticklabels(attacks, rotation=10, ha="right")
+    ax.set_ylim(0, 115)
+    ax.legend()
+    plt.tight_layout()
+    out = os.path.join(out_dir, "defense_comparison.png")
+    plt.savefig(out, dpi=150)
+    plt.close()
+    print(f"Saved: {out}")
+
+
 def main():
     os.makedirs(FIGURES_DIR, exist_ok=True)
     df = load_results()
@@ -104,6 +155,7 @@ def main():
     plot_asr(df, FIGURES_DIR)
     plot_queries(df, FIGURES_DIR)
     plot_wir_vs_awir(df, FIGURES_DIR)
+    plot_defense(FIGURES_DIR)
 
     print(f"\nAll figures saved to {FIGURES_DIR}")
 
